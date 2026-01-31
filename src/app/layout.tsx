@@ -32,6 +32,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <title>Vishawakarma Tent and Building Materials</title>
+      </head>
       <body className={cn(inter.className, "antialiased")}>
         <AuthProvider>
           <AppLayout>{children}</AppLayout>

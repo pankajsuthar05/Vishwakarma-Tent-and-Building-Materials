@@ -133,7 +133,7 @@ export default function LoginPage() {
                     <div className="p-3 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-xl shadow-lg shadow-blue-500/20 mb-4">
                         <Tent className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white">Tent Ledger</h1>
+                    <h1 className="text-2xl font-bold text-white text-center">Vishawakarma Tent and Building Materials</h1>
                     <p className="text-slate-400">
                         {mode === 'LOGIN' && 'Secure Business Login'}
                         {mode === 'SIGNUP' && 'Create Owner Account'}

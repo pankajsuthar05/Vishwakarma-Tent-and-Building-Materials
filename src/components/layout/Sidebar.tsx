@@ -23,6 +23,7 @@ export function Sidebar() {
             <div className="flex items-center gap-3 p-6 border-b border-slate-800/50">
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
                     Vishawakarma
+                    <div className="text-[10px] uppercase tracking-[0.2em] font-medium opacity-70">Tent & Materials</div>
                 </h1>
             </div>
 
