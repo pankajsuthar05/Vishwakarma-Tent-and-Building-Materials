@@ -124,7 +124,7 @@ Total Amount: ₹${invoiceData.grandTotal?.toLocaleString()}
 
 *ITEMS & CHARGES:*
 ${itemsList}
-Thank you from Shri Vishwakarma Building Material Company
+Thank you from Vishawakarma Tent and Building Materials
 Rawatsar Road, Jakharawali
 Phone: +91 9414876514, 7742881605, 9784883908
 
@@ -289,7 +289,7 @@ Don't forget to visit again, Your believe Our Strength.`;
                             <p className="text-slate-500">#{invoiceData.customerId?.slice(0, 8).toUpperCase()}</p>
                         </div>
                         <div className="text-right">
-                            <h3 className="font-bold text-xl mb-1">Shri Vishwakarma Building Material Company</h3>
+                            <h3 className="font-bold text-xl mb-1">Vishawakarma Tent and Building Materials</h3>
                             <p className="text-sm text-slate-600">Rawatsar Road, Jakharawali</p>
                             <p className="text-sm text-slate-600">Phone: +91 9414876514, 7742881605, 9784883908</p>
                         </div>

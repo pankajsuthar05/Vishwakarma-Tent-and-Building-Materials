@@ -1,6 +1,6 @@
-# Shri Vishwakarma Building Material Company Management Tool
+# Vishawakarma Tent and Building Materials Management Tool
 
-This is a comprehensive management tool for Shri Vishwakarma Building Material Company, designed to handle tent rental and building material inventory, customer ledgers, and invoicing.
+This is a comprehensive management tool for Vishawakarma Tent and Building Materials, designed to handle tent rental and building material inventory, customer ledgers, and invoicing.
 
 ## Features
 
