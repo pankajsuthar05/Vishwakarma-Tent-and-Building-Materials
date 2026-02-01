@@ -20,6 +20,17 @@ export default function InvoicePage() {
     const [sendInput, setSendInput] = useState('');
     const [isSending, setIsSending] = useState(false);
 
+    useEffect(() => {
+        if (invoiceData) {
+            document.title = `Invoice_${invoiceData.customerName || 'Sheet'}`;
+        } else {
+            document.title = "Generate Invoice - Shri Vishwakarma Building Material Company";
+        }
+        return () => {
+            document.title = "Shri Vishwakarma Building Materials";
+        };
+    }, [invoiceData]);
+
     const generatePDF = async () => {
         const element = document.getElementById('printable-invoice');
         if (!element) {
@@ -97,7 +108,7 @@ Thank you from Shri Vishwakarma Building Material Company
 Rawatsar Road, Jakharawali
 Phone: +91 9414876514, 7742881605, 9784883908
 
-Don't forget to visit again, Your believe Our Strength.`;
+Don't forget to visit again, Your belief Our Strength.`;
 
         setTimeout(() => {
             const encodedMsg = encodeURIComponent(messageBody);
