@@ -3,7 +3,13 @@ import path from 'path';
 
 const dbPath = path.join(process.cwd(), 'src/data/db.json');
 
-export function readDb() {
+interface Database {
+    inventory: unknown[];
+    bookings: unknown[];
+    customers: unknown[];
+}
+
+export function readDb(): Database {
     if (!fs.existsSync(dbPath)) {
         return { inventory: [], bookings: [], customers: [] };
     }
@@ -11,7 +17,7 @@ export function readDb() {
     return JSON.parse(fileContent);
 }
 
-export function writeDb(data: any) {
+export function writeDb(data: Database) {
     fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
 }
 

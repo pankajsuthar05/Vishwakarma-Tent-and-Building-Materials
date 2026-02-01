@@ -1,29 +1,27 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
-import { collection, doc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Eye, Edit, Search } from 'lucide-react';
+import { Eye, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { CustomerData, DemoData } from '@/types';
 
 export default function RunningPage() {
     const { user } = useAuth();
     const router = useRouter();
-    const [runningAccounts, setRunningAccounts] = useState<any[]>([]);
+    const [runningAccounts, setRunningAccounts] = useState<CustomerData[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         if (!user) return;
 
-        // DEMO MODE: load from local storage
         const loadItems = () => {
             try {
-                const data = JSON.parse(localStorage.getItem('tent_ledger_demo_data') || '{"users":{}}');
-                // Load ALL customers and filter for RUNNING status
+                const storedData = localStorage.getItem('tent_ledger_demo_data');
+                const data: DemoData = JSON.parse(storedData || '{"users":{}}');
                 const allCustomers = data.users?.[user.uid]?.customers || {};
-                const running = Object.values(allCustomers).filter((c: any) => c.status === 'RUNNING');
+                const running = Object.values(allCustomers).filter((c: CustomerData) => c.status === 'RUNNING');
                 setRunningAccounts(running);
             } catch (e) {
                 console.error(e);
@@ -31,33 +29,20 @@ export default function RunningPage() {
         };
 
         loadItems();
-        // Poll for changes every 2 seconds to simulate realtime
         const interval = setInterval(loadItems, 2000);
         return () => clearInterval(interval);
-
-        /* FIREBASE CODE
-        // Listen to 'customers' collection where status == 'RUNNING'
-        const q = query(collection(db, 'users', user.uid, 'customers'), where('status', '==', 'RUNNING'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const accounts = snapshot.docs.map(doc => ({ customerId: doc.id, ...doc.data() }));
-          setRunningAccounts(accounts);
-        });
-    
-        return () => unsubscribe();
-        */
     }, [user]);
 
     const handleViewRecord = (customerId: string) => {
         if (!user?.uid) return;
 
         try {
-            const data = JSON.parse(localStorage.getItem('tent_ledger_demo_data') || '{"users":{}}');
+            const storedData = localStorage.getItem('tent_ledger_demo_data');
+            const data: DemoData = JSON.parse(storedData || '{"users":{}}');
             const customerData = data.users?.[user.uid]?.customers?.[customerId];
 
             if (customerData) {
-                // Store the record to be edited
                 localStorage.setItem('tent_ledger_edit_record', JSON.stringify(customerData));
-                // Navigate to dashboard
                 router.push('/');
             }
         } catch (e) {
@@ -65,7 +50,6 @@ export default function RunningPage() {
         }
     };
 
-    // Filter accounts based on search query
     const filteredAccounts = runningAccounts.filter(account =>
         account.customerName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -74,7 +58,7 @@ export default function RunningPage() {
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">Running Accounts</h2>
+                    <h2 className="text-3xl font-bold text-white uppercase tracking-tight">Running Accounts</h2>
                     <p className="text-slate-400">Manage active customer rentals.</p>
                 </div>
                 <div className="relative w-80">
@@ -115,13 +99,13 @@ export default function RunningPage() {
                                     <td className="p-4 font-medium">{account.customerName}</td>
                                     <td className="p-4">{account.startDate}</td>
                                     <td className="p-4">
-                                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                                             {account.status}
                                         </span>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
-                                            {Array.from(new Set(account.ledgerRows?.map((r: any) => r.itemStatus || 'Pending'))).map((status: any) => (
+                                            {Array.from(new Set(account.ledgerRows?.map((r) => r.itemStatus || 'Pending'))).map((status) => (
                                                 <span key={status} className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border
                                                     ${status === 'Pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : ''}
                                                     ${status === 'Take' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : ''}

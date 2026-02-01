@@ -1,17 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { FileText, Eye, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { CustomerData, DemoData } from '@/types';
 
 export default function HistoryPage() {
     const { user } = useAuth();
     const router = useRouter();
-    const [historyAccounts, setHistoryAccounts] = useState<any[]>([]);
+    const [historyAccounts, setHistoryAccounts] = useState<CustomerData[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
@@ -20,8 +19,8 @@ export default function HistoryPage() {
 
         const loadItems = () => {
             try {
-                const data = JSON.parse(localStorage.getItem('tent_ledger_demo_data') || '{"users":{}}');
-                // Load ALL customers to show in history with filters
+                const storedData = localStorage.getItem('tent_ledger_demo_data');
+                const data: DemoData = JSON.parse(storedData || '{"users":{}}');
                 const allCustomers = data.users?.[user.uid]?.customers || {};
                 setHistoryAccounts(Object.values(allCustomers));
             } catch (e) {
@@ -32,28 +31,18 @@ export default function HistoryPage() {
         loadItems();
         const interval = setInterval(loadItems, 2000);
         return () => clearInterval(interval);
-
-        /* FIREBASE CODE
-        const q = query(collection(db, 'users', user.uid, 'history'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setHistoryAccounts(accounts);
-        });
-        return () => unsubscribe();
-        */
     }, [user]);
 
     const handleViewRecord = (customerId: string) => {
         if (!user) return;
 
         try {
-            const data = JSON.parse(localStorage.getItem('tent_ledger_demo_data') || '{"users":{}}');
+            const storedData = localStorage.getItem('tent_ledger_demo_data');
+            const data: DemoData = JSON.parse(storedData || '{"users":{}}');
             const customerData = data.users?.[user.uid]?.customers?.[customerId];
 
             if (customerData) {
-                // Store the record to be edited
                 localStorage.setItem('tent_ledger_edit_record', JSON.stringify(customerData));
-                // Navigate to dashboard
                 router.push('/');
             }
         } catch (e) {
@@ -65,26 +54,16 @@ export default function HistoryPage() {
         router.push(`/invoice?customerId=${customerId}`);
     };
 
-    // Filter accounts based on search query and status filter
     const filteredAccounts = historyAccounts.filter(account => {
         const matchesSearch = account.customerName?.toLowerCase().includes(searchQuery.toLowerCase());
         const isPaid = account.paymentStatus === 'Paid';
-        const isUnPaid = account.paymentStatus === 'UnPaid' || !account.paymentStatus;
+        const isUnPaid = account.paymentStatus === 'UnPaid';
         const isRunning = account.status === 'RUNNING';
 
         if (statusFilter === 'All') return matchesSearch;
-
-        if (statusFilter === 'Running') {
-            return matchesSearch && isRunning;
-        }
-
-        if (statusFilter === 'Pending') {
-            return matchesSearch && isUnPaid;
-        }
-
-        if (statusFilter === 'Complete') {
-            return matchesSearch && isPaid;
-        }
+        if (statusFilter === 'Running') return matchesSearch && isRunning;
+        if (statusFilter === 'Pending') return matchesSearch && isUnPaid && !isRunning;
+        if (statusFilter === 'Complete') return matchesSearch && isPaid;
 
         return matchesSearch;
     });
@@ -93,7 +72,7 @@ export default function HistoryPage() {
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">History</h2>
+                    <h2 className="text-3xl font-bold text-white uppercase tracking-tight">History</h2>
                     <p className="text-slate-400">Past completed transactions.</p>
                 </div>
                 <div className="flex gap-4">
@@ -165,7 +144,7 @@ export default function HistoryPage() {
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
-                                            {Array.from(new Set(account.ledgerRows?.map((r: any) => r.itemStatus || 'Pending'))).map((status: any) => (
+                                            {Array.from(new Set(account.ledgerRows?.map((r) => r.itemStatus || 'Pending'))).map((status) => (
                                                 <span key={status} className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border
                                                     ${status === 'Pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : ''}
                                                     ${status === 'Take' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : ''}

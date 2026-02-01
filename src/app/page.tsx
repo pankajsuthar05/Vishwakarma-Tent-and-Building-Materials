@@ -1,26 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Plus, Trash2, Save, Calculator } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-
-interface LedgerRow {
-  id: string;
-  startDate: string;
-  endDate: string;
-  itemName: string;
-  itemType: 'Tent' | 'Catering' | 'House Building';
-  itemStatus: 'Pending' | 'Take' | 'Get' | 'Clear';
-  quantity: number;
-  returnItems: number;
-  perPieceRent: number;
-  totalPerDayRent: number;
-}
+import { LedgerRow, CustomerData, DemoData } from '@/types';
 
 export default function LedgerPage() {
   const { user } = useAuth();
@@ -38,7 +24,7 @@ export default function LedgerPage() {
     const editRecord = localStorage.getItem('tent_ledger_edit_record');
     if (editRecord) {
       try {
-        const customerData = JSON.parse(editRecord);
+        const customerData: CustomerData = JSON.parse(editRecord);
 
         // Populate form fields
         setCustomerName(customerData.customerName || '');
@@ -48,7 +34,7 @@ export default function LedgerPage() {
 
         // Populate ledger rows
         if (customerData.ledgerRows && customerData.ledgerRows.length > 0) {
-          const loadedRows = customerData.ledgerRows.map((row: any) => ({
+          const loadedRows = customerData.ledgerRows.map((row: LedgerRow) => ({
             ...row,
             itemStatus: row.itemStatus || 'Pending',
             returnItems: row.returnItems || 0
@@ -64,10 +50,10 @@ export default function LedgerPage() {
     }
   }, []);
 
-  const handleRowChange = (id: string, field: keyof LedgerRow, value: any) => {
+  const handleRowChange = (id: string, field: keyof LedgerRow, value: string | number) => {
     setRows(prev => prev.map(row => {
       if (row.id === id) {
-        const updated = { ...row, [field]: value };
+        const updated = { ...row, [field]: value } as LedgerRow;
         // Auto calculation
         if (field === 'quantity' || field === 'perPieceRent') {
           updated.totalPerDayRent = (Number(updated.quantity) || 0) * (Number(updated.perPieceRent) || 0);
@@ -99,10 +85,10 @@ export default function LedgerPage() {
     }
   };
 
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     let grandTotal = 0;
     const itemizedDetails = rows.map(row => {
-      const start = new Date(row.startDate);
+      const start = row.startDate ? new Date(row.startDate) : new Date();
       const end = row.endDate ? new Date(row.endDate) : new Date(); // If running, calculate til today for view
       const diffTime = Math.abs(end.getTime() - start.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive
@@ -113,7 +99,7 @@ export default function LedgerPage() {
       return { ...row, days: diffDays, rowTotal: total };
     });
     return { grandTotal, itemizedDetails };
-  };
+  }, [rows]);
 
   const handleSave = async () => {
     if (!user || !customerName || !rows[0].startDate) {
@@ -131,7 +117,7 @@ export default function LedgerPage() {
       //    - If Paid -> COMPLETED
       //    - If UnPaid -> PENDING
       const hasOpenSession = rows.some(r => !r.endDate);
-      let status = 'RUNNING';
+      let status: 'RUNNING' | 'PENDING' | 'COMPLETED' = 'RUNNING';
 
       if (!hasOpenSession) {
         status = paymentStatus === 'Paid' ? 'COMPLETED' : 'PENDING';
@@ -141,9 +127,11 @@ export default function LedgerPage() {
 
       const { grandTotal } = calculateTotals();
 
-      const customerData = {
+      const customerData: CustomerData = {
         customerId,
         customerName,
+        startDate: rows[0].startDate,
+        endDate: rows[rows.length - 1].endDate || 'Running',
         address,
         phone,
         paymentStatus,
@@ -176,8 +164,9 @@ export default function LedgerPage() {
 
       // LOCAL STORAGE FALLBACK (Demo Mode)
       // Since Firebase might not be configured, we save to localStorage to verify functionality
-      const currentData = JSON.parse(localStorage.getItem('tent_ledger_demo_data') || '{"users":{}}');
-      const userData = currentData.users[user.uid] || { customers: {}, running: {}, history: {} };
+      const currentData: DemoData = JSON.parse(localStorage.getItem('tent_ledger_demo_data') || '{"users":{}}');
+      const userUid = user.uid;
+      const userData = currentData.users[userUid] || { customers: {}, running: {}, history: {} };
 
       userData.customers[customerId] = customerData;
 
@@ -187,33 +176,8 @@ export default function LedgerPage() {
         userData.history[customerId] = historyData;
       }
 
-      currentData.users[user.uid] = userData;
+      currentData.users[userUid] = userData;
       localStorage.setItem('tent_ledger_demo_data', JSON.stringify(currentData));
-
-      /* FIREBASE CODE (Commented out for unconfigured demo)
-      // 1. Save to main customers collection
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(doc(collection(userRef, 'customers'), customerData.customerId), customerData);
-
-      // 2. Save to running or history
-      if (status === 'RUNNING') {
-        await setDoc(doc(collection(userRef, 'running'), customerData.customerId), {
-          customerName,
-          startDate: rows[0].startDate,
-          endDate: 'Running',
-          grandTotal,
-          status
-        });
-      } else {
-        await setDoc(doc(collection(userRef, 'history'), customerData.customerId), {
-          customerName,
-          startDate: rows[0].startDate,
-          endDate: rows[rows.length - 1].endDate,
-          grandTotal,
-          status
-        });
-      }
-      */
 
       alert('Record saved successfully! (Stored locally in Demo Mode)');
 
@@ -232,14 +196,16 @@ export default function LedgerPage() {
     }
   };
 
+  const totals = calculateTotals();
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-white">New Ledger Entry</h2>
+          <h2 className="text-3xl font-bold text-white uppercase tracking-tight">New Ledger Entry</h2>
           <p className="text-slate-400">Create a new record for a customer.</p>
         </div>
-        <Button onClick={handleSave} isLoading={loading} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white border-0">
+        <Button onClick={handleSave} isLoading={loading} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white border-0 shadow-lg shadow-pink-500/20 active:translate-y-0.5 transition-all">
           <Save className="w-4 h-4 mr-2" /> Save Record
         </Button>
       </div>
@@ -289,7 +255,7 @@ export default function LedgerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {rows.map((row, index) => (
+                {rows.map((row) => (
                   <tr key={row.id} className="group hover:bg-slate-800/30 transition-colors">
                     <td className="p-3">
                       <Input
@@ -303,6 +269,7 @@ export default function LedgerPage() {
                       <select
                         value={row.itemType}
                         onChange={e => handleRowChange(row.id, 'itemType', e.target.value)}
+                        aria-label="Item Type"
                         className="h-10 w-full rounded-md border border-slate-700 bg-slate-900 text-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                       >
                         <option>Tent</option>
@@ -314,6 +281,7 @@ export default function LedgerPage() {
                       <select
                         value={row.itemStatus}
                         onChange={e => handleRowChange(row.id, 'itemStatus', e.target.value)}
+                        aria-label="Item Status"
                         className={`h-10 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600
                           ${row.itemStatus === 'Pending' ? 'text-yellow-400' : ''}
                           ${row.itemStatus === 'Take' ? 'text-blue-400' : ''}
@@ -368,7 +336,7 @@ export default function LedgerPage() {
                       <Input
                         type="number"
                         value={row.returnItems}
-                        onChange={e => handleRowChange(row.id, 'returnItems', e.target.value)}
+                        onChange={e => handleRowChange(row.id, 'returnItems', Number(e.target.value))}
                         className="h-10 bg-transparent border-slate-700 focus:bg-slate-900 text-white text-center"
                         placeholder="0"
                       />
@@ -379,7 +347,11 @@ export default function LedgerPage() {
                       </div>
                     </td>
                     <td className="p-3 text-center">
-                      <button onClick={() => removeRow(row.id)} className="text-slate-600 hover:text-red-400 transition-colors">
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        className="text-slate-600 hover:text-red-400 transition-colors"
+                        aria-label="Remove Item"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -422,8 +394,8 @@ export default function LedgerPage() {
                 </div>
               </div>
 
-              {calculateTotals().itemizedDetails.map((detail, i) => (
-                <div key={i} className="flex justify-between text-sm py-2 border-b border-slate-800 last:border-0">
+              {totals.itemizedDetails.map((detail, i) => (
+                <div key={i} className="flex justify-between text-sm py-2 border-b border-slate-800 last:border-0 border-dashed">
                   <div>
                     <p className="text-slate-300 font-medium">{detail.itemName || 'Item ' + (i + 1)}</p>
                     <p className="text-slate-500 text-xs">{detail.days ? `${detail.days} Days` : 'Running'} × {detail.totalPerDayRent}/day</p>
@@ -438,7 +410,7 @@ export default function LedgerPage() {
                 <div className="flex justify-between items-end">
                   <span className="text-slate-400 font-medium uppercase text-xs">Grand Total</span>
                   <span className="text-3xl font-bold text-white tracking-tight">
-                    ₹{calculateTotals().grandTotal.toLocaleString()}
+                    ₹{totals.grandTotal.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -449,3 +421,4 @@ export default function LedgerPage() {
     </div>
   );
 }
+

@@ -1,8 +1,6 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useState } from 'react';
+import { User } from 'firebase/auth';
 
 interface AuthContextType {
     user: User | null;
@@ -20,7 +18,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     // BYPASS AUTH: Providing a static dummy user for demo purposes
-    const [user, setUser] = useState<User | null>({
+    const [user] = useState<User | null>({
         uid: 'demo-owner-123',
         email: 'owner@example.com',
         emailVerified: true,
@@ -39,27 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         photoURL: null,
     } as unknown as User);
 
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
-
-    // Disabled Firebase listener for "Direct Open" mode
-    /*
-    useEffect(() => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setUser(user);
-        setLoading(false);
-        if (!user) {
-          router.push('/login');
-        }
-      });
-  
-      return () => unsubscribe();
-    }, [router]);
-    */
+    const [loading] = useState(false);
 
     const logout = async () => {
-        // await signOut(auth);
-        // router.push('/login');
         alert("Logout disabled in Demo Mode");
     };
 
@@ -69,3 +49,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         </AuthContext.Provider>
     );
 }
+
